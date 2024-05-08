@@ -18,7 +18,7 @@ app.use(session({
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: '',
+    password: 'Willy1997!',
     database: 'learning_management'
 });
 
@@ -100,14 +100,23 @@ app.post('/register', [
     };
 
     // Insert user into MySQL
-    User.createUser(newUser, (error, results, fields) => {
-        if (error) {
-          console.error('Error inserting user: ' + error.message);
-          return res.status(500).json({ error: error.message });
-        }
-        console.log('Inserted a new user with id ' + results.insertId);
-        res.status(201).json(newUser);
-      });
+   // User.createUser(newUser, (error, results, fields) => {
+   //     if (error) {
+       //   console.error('Error inserting user: ' + error.message);
+      //    return res.status(500).json({ error: error.message });
+      //  }
+     //   console.log('Inserted a new user with id ' + results.insertId);
+      //  res.status(201).json(newUser);
+     // });
+//});
+
+    // Save the user to the database
+    try {
+        const savedUser = await newUser.save();
+        res.status(201).json(savedUser); // Return the newly created user
+    } catch (err) {
+        res.status(500).json({ error: err.message }); // Handle database errors
+    }
 });
 
 // Login route
@@ -135,6 +144,20 @@ app.post('/login', (req, res) => {
     });
 });
 
+
+//app.post('/course-content', (req, res) => {
+    // Check if user is authenticated
+   // if (req.session.user) {
+        // Render courses page and pass user data if needed
+        //res.render('course-content.html', { user: req.session.user });
+    //} else {
+        // Redirect to login page if user is not authenticated
+        //res.redirect('/login');
+   // }
+//});
+
+
+
 // Logout route
 app.post('/logout', (req, res) => {
     req.session.destroy();
@@ -146,7 +169,49 @@ app.get('/dashboard', (req, res) => {
     // Assuming you have middleware to handle user authentication and store user information in req.user
     const userFullName = req.user.full_name;
     res.render('dashboard', { fullName: userFullName });
+
 });
+
+//course selection route
+app.post('/select-courses',(req,res) =>{
+    const {selectedCourses} = req.body;
+    const userId = req.session.user.id; // Assuming you store user id in session
+
+    //insert selected courses into database
+    const sql = 'INSERT INTO user_courses (user_id, course_id) VALUES ?';
+    const values = selectedCourses.map(courseId => [userId, courseId]);
+    connection.query(sql, [values], (err, result) => {
+        if (err){
+            console.error('Error inserting selected courses:', err);
+            res.status(500).send('Failed to select courses');
+        }else{
+            res.status(200).send('Courses selected successfully');
+        }
+    });
+});
+
+
+// Fetch selected courses for the current user
+app.get('/selected-courses', (req, res) => {
+    const userId = req.session.user.id; // Assuming you store user id in session
+
+    // Fetch selected courses from database for the current user
+    const sql = 'SELECT * FROM courses INNER JOIN user_courses ON courses.id = user_courses.course_id WHERE user_courses.user_id = ?';
+    connection.query(sql, [userId], (err, results) => {
+        if (err) {
+            console.error('Error fetching selected courses:', err);
+            res.status(500).send('Failed to fetch selected courses');
+        } else {
+            res.status(200).json(results);
+        }
+    });
+});
+
+//route to serve course course-content.html
+
+//app.get('/course-content.html',(req,res) =>{
+   // res.sendFile(__dirname + '/course-content.html');
+//});
 
 // Route to retrieve course content
 app.get('/course/:id', (req, res) => {
